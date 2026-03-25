@@ -3,583 +3,237 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>ScreenSync — লাইভ স্ক্রিন শেয়ার</title>
+  <title>ScreenSync — লাইভ শেয়ার</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
-      --bg:      #050810;
-      --bg2:     #0a0f1a;
-      --bg3:     #0f1627;
-      --surface: rgba(255,255,255,0.04);
-      --border:  rgba(255,255,255,0.08);
-      --cyan:    #00d4ff;
-      --cyan-lo: rgba(0, 212, 255, 0.12);
-      --cyan-md: rgba(0, 212, 255, 0.25);
-      --green:   #00e57a;
-      --pink:    #ff2d6b;
-      --amber:   #ffaa00;
-      --text:    #dde4ef;
-      --muted:   #5a6a80;
-      --fm: 'Space Mono', monospace;
-      --fs: 'Sora', sans-serif;
-      --r: 14px;
-      --r-lg: 20px;
+      --bg:#050810;--bg2:#0a0f1a;--bg3:#0f1627;
+      --surface:rgba(255,255,255,.04);--border:rgba(255,255,255,.08);
+      --cyan:#00d4ff;--cyan-lo:rgba(0,212,255,.12);--cyan-md:rgba(0,212,255,.25);
+      --green:#00e57a;--pink:#ff2d6b;
+      --text:#dde4ef;--muted:#5a6a80;
+      --fm:'Space Mono',monospace;--fs:'Sora',sans-serif;
+      --r:14px;--r-lg:20px;
     }
+    html,body{height:100%;}
+    body{font-family:var(--fs);background:var(--bg);color:var(--text);overflow:hidden;}
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;
+      background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);
+      background-size:44px 44px;}
 
-    html, body { height: 100%; }
+    /* LOBBY */
+    #lobby{position:relative;z-index:1;height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .lobby-card{width:100%;max-width:420px;background:var(--bg2);border:1px solid var(--border);
+      border-radius:24px;padding:40px 34px;position:relative;overflow:hidden;}
+    .lobby-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,transparent,var(--cyan),transparent);}
+    .glow-orb{position:absolute;top:-80px;left:50%;transform:translateX(-50%);
+      width:280px;height:180px;background:radial-gradient(ellipse,rgba(0,212,255,.1) 0%,transparent 70%);pointer-events:none;}
+    .logo{text-align:center;margin-bottom:28px;}
+    .logo-wrap{width:64px;height:64px;background:var(--cyan-lo);border:1px solid var(--cyan-md);
+      border-radius:18px;display:flex;align-items:center;justify-content:center;
+      margin:0 auto 12px;font-size:28px;position:relative;}
+    .logo-wrap::after{content:'';position:absolute;inset:-4px;border:1px solid transparent;
+      border-top-color:var(--cyan);border-radius:22px;animation:spin 3s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .logo h1{font-size:24px;font-weight:800;letter-spacing:-.5px;}
+    .logo h1 em{font-style:normal;color:var(--cyan);}
+    .logo p{font-size:12px;color:var(--muted);margin-top:4px;}
 
-    body {
-      font-family: var(--fs);
-      background: var(--bg);
-      color: var(--text);
-      overflow: hidden;
-    }
+    .device-badge{display:flex;align-items:center;gap:8px;background:var(--cyan-lo);
+      border:1px solid var(--cyan-md);border-radius:10px;padding:9px 14px;margin-bottom:18px;
+      font-size:12px;color:var(--cyan);}
+    .device-badge span{color:var(--text);font-weight:600;}
 
-    /* ── grid bg ── */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image:
-        linear-gradient(rgba(0,212,255,.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,212,255,.025) 1px, transparent 1px);
-      background-size: 44px 44px;
-      pointer-events: none;
-    }
+    .field{margin-bottom:12px;}
+    .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);
+      text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px;}
+    .field input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);
+      border-radius:var(--r);padding:12px 15px;color:var(--text);font-family:var(--fs);
+      font-size:15px;outline:none;transition:border-color .2s,background .2s,box-shadow .2s;}
+    .field input:focus{border-color:rgba(0,212,255,.45);background:rgba(0,212,255,.04);
+      box-shadow:0 0 0 3px rgba(0,212,255,.07);}
+    .field input::placeholder{color:var(--muted);}
+    .field input.code-input{font-family:var(--fm);letter-spacing:6px;text-align:center;font-size:17px;}
 
-    /* ══════════════════════════════════
-       LOBBY
-    ══════════════════════════════════ */
-    #lobby {
-      position: relative; z-index: 1;
-      height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px;
-    }
+    .btn{width:100%;padding:13px;border-radius:var(--r);border:none;
+      font-family:var(--fs);font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;}
+    .btn-cyan{background:var(--cyan);color:#000;}
+    .btn-cyan:hover{background:#2dddff;transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,212,255,.3);}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+    .btn-ghost:hover{border-color:rgba(0,212,255,.4);background:var(--cyan-lo);}
+    .btn:active{transform:scale(.98);}
+    .divider{display:flex;align-items:center;gap:12px;margin:16px 0;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .divider span{font-size:11px;color:var(--muted);font-family:var(--fm);}
+    .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:14px;line-height:1.7;}
 
-    .lobby-card {
-      width: 100%; max-width: 420px;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 44px 38px;
-      position: relative; overflow: hidden;
-    }
+    /* ROOM */
+    #room{position:fixed;inset:0;display:none;flex-direction:column;z-index:1;}
+    .hd{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;}
+    .hd-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;flex:1;}
+    .dot-live{width:8px;height:8px;background:var(--green);border-radius:50%;
+      box-shadow:0 0 6px var(--green);animation:blink 1.4s ease-in-out infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+    .avatars{display:flex;gap:4px;}
+    .av{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:700;border:2px solid var(--border);background:var(--surface);color:var(--muted);}
+    .av.on{border-color:var(--cyan);background:var(--cyan-lo);color:var(--cyan);}
+    .code-badge{font-family:var(--fm);font-size:12px;padding:4px 11px;background:var(--cyan-lo);
+      border:1px solid var(--cyan-md);border-radius:100px;color:var(--cyan);cursor:pointer;white-space:nowrap;}
 
-    .lobby-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent 0%, var(--cyan) 50%, transparent 100%);
-    }
+    .vgrid{flex:1;padding:10px;display:grid;gap:8px;overflow:hidden;
+      grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;}
+    .tile{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-lg);
+      overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;transition:border-color .3s;}
+    .tile.local-tile{grid-column:1/-1;}
+    .tile.t-sharing{border-color:rgba(0,229,122,.4);}
+    .tile.t-connected{border-color:rgba(0,212,255,.3);}
+    .tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;}
+    .tile-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:7px;text-align:center;padding:16px;z-index:1;position:relative;}
+    .tile-ph .ph-icon{font-size:26px;}
+    .tile-ph p{font-size:11px;color:var(--muted);line-height:1.5;}
+    .tile-ph::after{content:'';position:absolute;top:0;left:-100%;right:0;bottom:0;
+      background:linear-gradient(90deg,transparent,rgba(0,212,255,.04),transparent);
+      animation:shimmer 2.4s ease-in-out infinite;}
+    @keyframes shimmer{from{left:-100%}to{left:100%}}
+    .tile-lbl{position:absolute;bottom:9px;left:9px;background:rgba(5,8,16,.75);
+      backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);border-radius:100px;
+      padding:4px 11px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;z-index:2;}
+    .lbl-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+    .lbl-dot.live{background:var(--green);box-shadow:0 0 4px var(--green);}
+    .lbl-dot.con{background:var(--cyan);box-shadow:0 0 4px var(--cyan);}
+    .flip-btn{position:absolute;top:9px;right:9px;z-index:3;background:rgba(5,8,16,.7);
+      backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15);border-radius:100px;
+      color:var(--text);font-size:11px;padding:5px 11px;cursor:pointer;display:none;}
 
-    .glow-orb {
-      position: absolute; top: -80px; left: 50%;
-      transform: translateX(-50%);
-      width: 280px; height: 180px;
-      background: radial-gradient(ellipse, rgba(0,212,255,.1) 0%, transparent 70%);
-      pointer-events: none;
-    }
+    /* CONTROLS */
+    .ctrls{flex-shrink:0;padding:8px 12px 14px;display:flex;justify-content:center;
+      align-items:center;gap:8px;background:var(--bg2);border-top:1px solid var(--border);}
+    .cb{display:flex;flex-direction:column;align-items:center;gap:4px;
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+      padding:9px 12px;cursor:pointer;transition:all .18s;color:var(--text);
+      font-family:var(--fs);min-width:60px;}
+    .cb:hover{background:rgba(255,255,255,.07);}
+    .cb:active{transform:scale(.95);}
+    .cb .ci{font-size:19px;}
+    .cb .cl{font-size:10px;color:var(--muted);font-weight:500;}
+    .cb.active{background:var(--cyan-lo);border-color:var(--cyan-md);}
+    .cb.active .cl{color:var(--cyan);}
+    .cb.danger{background:rgba(255,45,107,.08);border-color:rgba(255,45,107,.25);}
+    .cb.disabled{opacity:.3;cursor:not-allowed;pointer-events:none;}
 
-    /* logo */
-    .logo { text-align: center; margin-bottom: 36px; position: relative; }
+    /* MODAL */
+    .overlay{position:fixed;inset:0;background:rgba(5,8,16,.8);backdrop-filter:blur(6px);
+      z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+    .overlay.show{display:flex;}
+    .modal{background:var(--bg2);border:1px solid var(--border);border-radius:22px;
+      padding:30px;width:100%;max-width:320px;text-align:center;position:relative;animation:popIn .25s ease;}
+    @keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+    .modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,transparent,var(--cyan),transparent);border-radius:22px 22px 0 0;}
+    .modal h3{font-size:16px;font-weight:700;margin-bottom:4px;}
+    .modal p{font-size:13px;color:var(--muted);margin-bottom:14px;}
+    .code-box{font-family:var(--fm);font-size:30px;font-weight:700;letter-spacing:8px;
+      color:var(--cyan);background:var(--cyan-lo);border:1px solid var(--cyan-md);
+      border-radius:14px;padding:16px;margin-bottom:18px;cursor:pointer;}
+    .modal-btns{display:flex;flex-direction:column;gap:8px;}
 
-    .logo-wrap {
-      width: 68px; height: 68px;
-      background: var(--cyan-lo);
-      border: 1px solid var(--cyan-md);
-      border-radius: 18px;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 14px;
-      font-size: 30px;
-      position: relative;
-    }
-
-    .logo-wrap::after {
-      content: '';
-      position: absolute; inset: -4px;
-      border: 1px solid transparent;
-      border-top-color: var(--cyan);
-      border-radius: 22px;
-      animation: spin 3s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .logo h1 {
-      font-size: 26px; font-weight: 800;
-      letter-spacing: -0.5px;
-      color: var(--text);
-    }
-    .logo h1 em { font-style: normal; color: var(--cyan); }
-    .logo p { font-size: 13px; color: var(--muted); margin-top: 5px; }
-
-    /* inputs */
-    .field { margin-bottom: 14px; }
-
-    .field label {
-      display: block;
-      font-size: 11px; font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase; letter-spacing: 1.2px;
-      margin-bottom: 8px;
-    }
-
-    .field input {
-      width: 100%;
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 13px 16px;
-      color: var(--text);
-      font-family: var(--fs); font-size: 15px;
-      outline: none;
-      transition: border-color .2s, background .2s, box-shadow .2s;
-    }
-
-    .field input:focus {
-      border-color: rgba(0,212,255,.45);
-      background: rgba(0,212,255,.04);
-      box-shadow: 0 0 0 3px rgba(0,212,255,.07);
-    }
-
-    .field input::placeholder { color: var(--muted); }
-    .field input.code-input { font-family: var(--fm); letter-spacing: 6px; text-align: center; font-size: 17px; }
-
-    /* buttons */
-    .btn {
-      width: 100%;
-      padding: 14px;
-      border-radius: var(--r);
-      border: none;
-      font-family: var(--fs); font-size: 15px; font-weight: 600;
-      cursor: pointer;
-      transition: all .2s;
-    }
-
-    .btn-cyan {
-      background: var(--cyan);
-      color: #000;
-    }
-    .btn-cyan:hover { background: #2dddff; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,212,255,.3); }
-    .btn-cyan:active { transform: scale(.98); }
-
-    .btn-ghost {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-    .btn-ghost:hover { border-color: rgba(0,212,255,.4); background: var(--cyan-lo); }
-    .btn-ghost:active { transform: scale(.98); }
-
-    .divider {
-      display: flex; align-items: center; gap: 12px;
-      margin: 22px 0;
-    }
-    .divider::before, .divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
-    .divider span { font-size: 11px; color: var(--muted); font-family: var(--fm); }
-
-    .hint { text-align: center; font-size: 12px; color: var(--muted); margin-top: 18px; line-height: 1.6; }
-
-    /* ══════════════════════════════════
-       ROOM
-    ══════════════════════════════════ */
-    #room {
-      position: fixed; inset: 0;
-      display: none; flex-direction: column;
-      z-index: 1;
-    }
-
-    /* header */
-    .hd {
-      height: 54px;
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center;
-      padding: 0 16px;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-
-    .hd-title {
-      font-size: 14px; font-weight: 700;
-      display: flex; align-items: center; gap: 8px;
-      flex: 1;
-    }
-
-    .dot-live {
-      width: 8px; height: 8px;
-      background: var(--green);
-      border-radius: 50%;
-      box-shadow: 0 0 6px var(--green);
-      animation: blink 1.4s ease-in-out infinite;
-    }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-    .avatars { display: flex; gap: 4px; }
-
-    .av {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700;
-      border: 2px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      transition: all .3s;
-    }
-    .av.on {
-      border-color: var(--cyan);
-      background: var(--cyan-lo);
-      color: var(--cyan);
-    }
-
-    .code-badge {
-      font-family: var(--fm); font-size: 12px;
-      padding: 4px 12px;
-      background: var(--cyan-lo);
-      border: 1px solid var(--cyan-md);
-      border-radius: 100px;
-      color: var(--cyan);
-      cursor: pointer;
-      transition: background .2s;
-      white-space: nowrap;
-    }
-    .code-badge:hover { background: var(--cyan-md); }
-
-    /* videos */
-    .vgrid {
-      flex: 1;
-      padding: 12px;
-      display: grid;
-      gap: 10px;
-      overflow: hidden;
-      /* default: 3-slot layout */
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-    }
-
-    .tile {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      overflow: hidden;
-      position: relative;
-      display: flex; align-items: center; justify-content: center;
-      transition: border-color .3s;
-    }
-
-    .tile.local-tile { grid-column: 1 / -1; }
-
-    .tile.t-sharing { border-color: rgba(0,229,122,.4); }
-    .tile.t-connected { border-color: rgba(0,212,255,.3); }
-
-    .tile video {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: contain;
-      display: none;
-    }
-
-    .tile-ph {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px; text-align: center;
-      padding: 20px;
-      z-index: 1;
-    }
-
-    .tile-ph .ph-icon { font-size: 28px; }
-    .tile-ph p { font-size: 12px; color: var(--muted); }
-
-    /* scan shimmer on empty tiles */
-    .tile-ph::after {
-      content: '';
-      position: absolute; top: 0; left: -100%; right: 0; bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(0,212,255,.04), transparent);
-      animation: shimmer 2.4s ease-in-out infinite;
-    }
-    @keyframes shimmer { from{left:-100%} to{left:100%} }
-
-    .tile-lbl {
-      position: absolute; bottom: 10px; left: 10px;
-      background: rgba(5,8,16,.75);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 100px;
-      padding: 4px 12px;
-      font-size: 12px; font-weight: 600;
-      display: flex; align-items: center; gap: 6px;
-      z-index: 2;
-    }
-
-    .lbl-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      transition: background .3s;
-    }
-    .lbl-dot.live { background: var(--green); box-shadow: 0 0 4px var(--green); }
-    .lbl-dot.con  { background: var(--cyan);  box-shadow: 0 0 4px var(--cyan);  }
-
-    /* controls */
-    .ctrls {
-      flex-shrink: 0;
-      padding: 10px 14px 16px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      background: var(--bg2);
-      border-top: 1px solid var(--border);
-    }
-
-    .cb {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 4px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 10px 14px;
-      cursor: pointer;
-      transition: all .18s;
-      color: var(--text);
-      font-family: var(--fs);
-      min-width: 68px;
-      position: relative;
-    }
-    .cb:hover { background: rgba(255,255,255,.07); }
-    .cb:active { transform: scale(.95); }
-    .cb .ci { font-size: 20px; }
-    .cb .cl { font-size: 10px; color: var(--muted); font-weight: 500; }
-
-    .cb.active {
-      background: var(--cyan-lo);
-      border-color: var(--cyan-md);
-    }
-    .cb.active .cl { color: var(--cyan); }
-
-    .cb.danger {
-      background: rgba(255,45,107,.08);
-      border-color: rgba(255,45,107,.25);
-    }
-    .cb.danger:hover { background: rgba(255,45,107,.16); }
-
-    /* ══════════════════════════════════
-       MODALS
-    ══════════════════════════════════ */
-    .overlay {
-      position: fixed; inset: 0;
-      background: rgba(5,8,16,.8);
-      backdrop-filter: blur(6px);
-      z-index: 200;
-      display: none;
-      align-items: center; justify-content: center;
-      padding: 20px;
-    }
-    .overlay.show { display: flex; }
-
-    .modal {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 32px;
-      width: 100%; max-width: 340px;
-      text-align: center;
-      position: relative;
-      animation: popIn .25s ease;
-    }
-    @keyframes popIn { from{transform:scale(.92);opacity:0} to{transform:scale(1);opacity:1} }
-
-    .modal::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-      border-radius: 22px 22px 0 0;
-    }
-
-    .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-    .modal p  { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
-
-    .code-box {
-      font-family: var(--fm);
-      font-size: 34px; font-weight: 700;
-      letter-spacing: 10px;
-      color: var(--cyan);
-      background: var(--cyan-lo);
-      border: 1px solid var(--cyan-md);
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 20px;
-      cursor: pointer;
-      transition: background .2s;
-    }
-    .code-box:hover { background: var(--cyan-md); }
-
-    .modal-btns { display: flex; flex-direction: column; gap: 8px; }
-
-    /* ══════════════════════════════════
-       TOASTS
-    ══════════════════════════════════ */
-    #toasts {
-      position: fixed;
-      top: 64px; right: 16px;
-      z-index: 300;
-      display: flex; flex-direction: column; gap: 8px;
-      pointer-events: none;
-    }
-
-    .toast {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 11px 16px;
-      font-size: 13px;
-      max-width: 260px;
-      animation: tIn .3s ease;
-      border-left: 3px solid var(--muted);
-    }
-    .toast.ok   { border-left-color: var(--green); }
-    .toast.info { border-left-color: var(--cyan);  }
-    .toast.bad  { border-left-color: var(--pink);  }
-
-    @keyframes tIn { from{transform:translateX(110%);opacity:0} to{transform:translateX(0);opacity:1} }
-
-    /* responsive */
-    @media (max-width: 480px) {
-      .lobby-card { padding: 30px 22px; }
-      .cb { min-width: 58px; padding: 9px 10px; }
-      .cb .ci { font-size: 18px; }
-    }
-
-    @media (max-width: 360px) {
-      .cb .cl { display: none; }
-      .ctrls { gap: 8px; }
-    }
+    /* TOASTS */
+    #toasts{position:fixed;top:60px;right:14px;z-index:300;display:flex;flex-direction:column;gap:7px;pointer-events:none;}
+    .toast{background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+      padding:10px 14px;font-size:12px;max-width:240px;animation:tIn .3s ease;border-left:3px solid var(--muted);}
+    .toast.ok{border-left-color:var(--green);}
+    .toast.info{border-left-color:var(--cyan);}
+    .toast.bad{border-left-color:var(--pink);}
+    @keyframes tIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @media(max-width:380px){.cb .cl{display:none;}.ctrls{gap:6px;}.cb{min-width:50px;padding:9px;}}
   </style>
 </head>
 <body>
 
-<!-- ════════════════ LOBBY ════════════════ -->
 <div id="lobby">
   <div class="lobby-card">
     <div class="glow-orb"></div>
-
     <div class="logo">
       <div class="logo-wrap">📡</div>
       <h1>Screen<em>Sync</em></h1>
-      <p>৩ বন্ধুর লাইভ স্ক্রিন শেয়ারিং</p>
+      <p>৩ বন্ধুর লাইভ ভিডিও শেয়ারিং</p>
     </div>
-
+    <div class="device-badge">
+      <span id="dIcon">📱</span>&nbsp;
+      <span id="dText">ডিভাইস শনাক্ত হচ্ছে…</span>
+    </div>
     <div class="field">
       <label>তোমার নাম</label>
       <input id="nameInput" type="text" placeholder="নাম লিখো..." maxlength="18" autocomplete="off">
     </div>
-
     <button class="btn btn-cyan" onclick="createRoom()">✦ নতুন রুম তৈরি করো</button>
-
     <div class="divider"><span>অথবা যোগ দাও</span></div>
-
     <div class="field">
       <label>রুম কোড</label>
       <input id="codeInput" type="text" class="code-input" placeholder="XXXXXX" maxlength="6"
-             autocomplete="off" autocapitalize="characters"
-             oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+        autocomplete="off" autocapitalize="characters"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
     </div>
-
     <button class="btn btn-ghost" onclick="joinRoom()">→ রুমে যোগ দাও</button>
-
-    <p class="hint">⚠️ স্ক্রিন শেয়ারের জন্য ব্রাউজার পারমিশন দিতে হবে<br>HTTPS বা localhost-এ সবচেয়ে ভালো কাজ করে</p>
+    <p class="hint" id="lobbyHint"></p>
   </div>
 </div>
 
-<!-- ════════════════ ROOM ════════════════ -->
 <div id="room">
-  <!-- header -->
   <div class="hd">
-    <div class="hd-title">
-      <div class="dot-live"></div>
-      <span id="hdName">ScreenSync</span>
-    </div>
+    <div class="hd-title"><div class="dot-live"></div><span id="hdName">ScreenSync</span></div>
     <div class="avatars" id="avList"></div>
-    <div class="code-badge" id="codeBadge" onclick="openModal('codeModal')">- - - - - -</div>
+    <div class="code-badge" id="codeBadge" onclick="openModal('codeModal')">------</div>
   </div>
 
-  <!-- 3-tile video grid -->
-  <div class="vgrid" id="vgrid">
-
-    <!-- local tile (top full-width) -->
+  <div class="vgrid">
     <div class="tile local-tile" id="t0">
       <div class="tile-ph" id="ph0">
-        <div class="ph-icon">🖥️</div>
-        <p>স্ক্রিন শেয়ার শুরু করো</p>
+        <div class="ph-icon" id="ph0Icon">📷</div>
+        <p id="ph0Txt">ক্যামেরা চালু করো</p>
       </div>
       <video id="v0" autoplay muted playsinline></video>
-      <div class="tile-lbl">
-        <div class="lbl-dot" id="d0"></div>
-        <span id="n0">তুমি</span>
-      </div>
+      <button class="flip-btn" id="flipBtn" onclick="flipCamera()">🔄 ফ্লিপ</button>
+      <div class="tile-lbl"><div class="lbl-dot" id="d0"></div><span id="n0">তুমি</span></div>
     </div>
-
-    <!-- peer 1 -->
     <div class="tile" id="t1">
-      <div class="tile-ph" id="ph1">
-        <div class="ph-icon">⏳</div>
-        <p>বন্ধুর জন্য অপেক্ষা…</p>
-      </div>
+      <div class="tile-ph" id="ph1"><div class="ph-icon">⏳</div><p>বন্ধুর জন্য<br>অপেক্ষা…</p></div>
       <video id="v1" autoplay playsinline></video>
-      <div class="tile-lbl" id="lb1" style="display:none">
-        <div class="lbl-dot" id="d1"></div>
-        <span id="n1">বন্ধু ১</span>
-      </div>
+      <div class="tile-lbl" id="lb1" style="display:none"><div class="lbl-dot" id="d1"></div><span id="n1">বন্ধু ১</span></div>
     </div>
-
-    <!-- peer 2 -->
     <div class="tile" id="t2">
-      <div class="tile-ph" id="ph2">
-        <div class="ph-icon">⏳</div>
-        <p>বন্ধুর জন্য অপেক্ষা…</p>
-      </div>
+      <div class="tile-ph" id="ph2"><div class="ph-icon">⏳</div><p>বন্ধুর জন্য<br>অপেক্ষা…</p></div>
       <video id="v2" autoplay playsinline></video>
-      <div class="tile-lbl" id="lb2" style="display:none">
-        <div class="lbl-dot" id="d2"></div>
-        <span id="n2">বন্ধু ২</span>
-      </div>
+      <div class="tile-lbl" id="lb2" style="display:none"><div class="lbl-dot" id="d2"></div><span id="n2">বন্ধু ২</span></div>
     </div>
-
   </div>
 
-  <!-- controls -->
   <div class="ctrls">
     <button class="cb" id="btnScreen" onclick="toggleScreen()">
-      <span class="ci">🖥️</span>
-      <span class="cl" id="lScreen">শেয়ার</span>
+      <span class="ci">🖥️</span><span class="cl" id="lScreen">স্ক্রিন</span>
     </button>
     <button class="cb" id="btnCam" onclick="toggleCam()">
-      <span class="ci">📷</span>
-      <span class="cl" id="lCam">ক্যামেরা</span>
-    </button>
-    <button class="cb" onclick="openModal('codeModal')">
-      <span class="ci">🔗</span>
-      <span class="cl">কোড</span>
+      <span class="ci">📷</span><span class="cl" id="lCam">ক্যামেরা</span>
     </button>
     <button class="cb" id="btnMic" onclick="toggleMic()">
-      <span class="ci" id="micIcon">🎙️</span>
-      <span class="cl">মাইক</span>
+      <span class="ci" id="micIcon">🎙️</span><span class="cl">মাইক</span>
+    </button>
+    <button class="cb" onclick="openModal('codeModal')">
+      <span class="ci">🔗</span><span class="cl">কোড</span>
     </button>
     <button class="cb danger" onclick="leave()">
-      <span class="ci">📴</span>
-      <span class="cl">ছাড়ো</span>
+      <span class="ci">📴</span><span class="cl">ছাড়ো</span>
     </button>
   </div>
 </div>
 
-<!-- ════════════════ CODE MODAL ════════════════ -->
 <div class="overlay" id="codeModal" onclick="if(event.target===this)closeModal('codeModal')">
   <div class="modal">
     <h3>🔗 রুম কোড</h3>
@@ -592,383 +246,273 @@
   </div>
 </div>
 
-<!-- toast container -->
 <div id="toasts"></div>
 
-<!-- ════════════════ SCRIPT ════════════════ -->
 <script>
-// ─────────────────────────────────────────────
-//  STATE
-// ─────────────────────────────────────────────
-let peer      = null;
-let myStream  = null;
-let myName    = '';
-let roomCode  = '';
-let isHost    = false;
-let micOn     = true;
+// ── Device Detection ──
+const ua = navigator.userAgent;
+const isMobile  = /Android|iPhone|iPad|iPod/i.test(ua);
+const isAndroid = /Android/i.test(ua);
+const isIOS     = /iPhone|iPad|iPod/i.test(ua);
 
-// peers[peerId] = { name, slot (0|1), dataConn, mediaConn }
-const peers = {};
-const slots = [null, null]; // slot 0 → peer1, slot 1 → peer2
+document.addEventListener('DOMContentLoaded', () => {
+  if (isAndroid) {
+    document.getElementById('dIcon').textContent = '🤖';
+    document.getElementById('dText').textContent = 'Android — ক্যামেরা মোড';
+    document.getElementById('lobbyHint').textContent = '📷 Android Chrome-এ browser screen share কাজ করে না। ক্যামেরা দিয়ে লাইভ যাও — Desktop-এ screen share সম্ভব।';
+  } else if (isIOS) {
+    document.getElementById('dIcon').textContent = '🍎';
+    document.getElementById('dText').textContent = 'iPhone — ক্যামেরা মোড';
+    document.getElementById('lobbyHint').textContent = '📷 iOS-এ ক্যামেরা দিয়ে লাইভ শেয়ার করো।';
+  } else {
+    document.getElementById('dIcon').textContent = '🖥️';
+    document.getElementById('dText').textContent = 'Desktop — স্ক্রিন ও ক্যামেরা উভয়ই';
+    document.getElementById('lobbyHint').textContent = '🖥️ Desktop Chrome/Edge-এ Screen Share ও Camera দুটোই কাজ করবে।';
+  }
+});
 
-// ─────────────────────────────────────────────
-//  HELPERS
-// ─────────────────────────────────────────────
-function toast(msg, type='info') {
-  const c = document.getElementById('toasts');
-  const d = document.createElement('div');
-  d.className = `toast ${type}`;
-  d.textContent = msg;
-  c.appendChild(d);
-  setTimeout(() => d.style.opacity = '0', 2800);
-  setTimeout(() => d.remove(), 3200);
+// ── State ──
+let peer=null, myStream=null, myName='', roomCode='', isHost=false, micOn=true, camFacing='user';
+const peers={}, slots=[null,null];
+let sharing=false, camOn=false;
+
+// ── Helpers ──
+function toast(msg,type='info'){
+  const c=document.getElementById('toasts'),d=document.createElement('div');
+  d.className=`toast ${type}`;d.textContent=msg;c.appendChild(d);
+  setTimeout(()=>d.style.opacity='0',2800);setTimeout(()=>d.remove(),3200);
+}
+const openModal=id=>document.getElementById(id).classList.add('show');
+const closeModal=id=>document.getElementById(id).classList.remove('show');
+function validateName(){const v=document.getElementById('nameInput').value.trim();if(!v){toast('নাম লিখতে হবে!','bad');return null;}return v;}
+function mkCode(){return Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ2345679'[Math.random()*31|0]).join('');}
+function pid2code(c){return 'SSv3-'+c;}
+function setRoomCode(c){roomCode=c;document.getElementById('codeBadge').textContent=c;document.getElementById('codeDisplay').textContent=c;}
+
+// ── Lobby ──
+function createRoom(){
+  const name=validateName();if(!name)return;
+  myName=name;isHost=true;const code=mkCode();setRoomCode(code);
+  toast('রুম তৈরি হচ্ছে…','info');
+  peer=new Peer(pid2code(code),{config:{iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
+    {urls:'stun:stun2.l.google.com:19302'},{urls:'stun:stun3.l.google.com:19302'},
+  ]}});
+  peer.on('open',()=>{toast('রুম তৈরি হয়েছে 🎉','ok');enterRoom();openModal('codeModal');});
+  peer.on('connection',handleDataIn);peer.on('call',handleCallIn);peer.on('error',onPeerError);
+}
+function joinRoom(){
+  const name=validateName();if(!name)return;
+  const c=document.getElementById('codeInput').value.trim().toUpperCase();
+  if(c.length!==6){toast('৬ অক্ষরের কোড দাও!','bad');return;}
+  myName=name;isHost=false;setRoomCode(c);toast('কানেক্ট হচ্ছে…','info');
+  peer=new Peer(undefined,{config:{iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
+    {urls:'stun:stun2.l.google.com:19302'},
+  ]}});
+  peer.on('open',()=>{enterRoom();connectTo(pid2code(c));});
+  peer.on('connection',handleDataIn);peer.on('call',handleCallIn);peer.on('error',onPeerError);
 }
 
-function openModal(id)  { document.getElementById(id).classList.add('show'); }
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-
-function validateName() {
-  const v = document.getElementById('nameInput').value.trim();
-  if (!v) { toast('নাম লিখতে হবে!', 'bad'); return null; }
-  return v;
-}
-
-function mkCode() {
-  const C = 'ABCDEFGHJKLMNPQRSTUVWXYZ2345679';
-  return Array.from({length:6}, () => C[Math.random()*C.length|0]).join('');
-}
-
-function peerIdFromCode(c) { return 'SS-' + c; }
-
-function setRoomCode(c) {
-  roomCode = c;
-  document.getElementById('codeBadge').textContent   = c;
-  document.getElementById('codeDisplay').textContent = c;
-}
-
-// ─────────────────────────────────────────────
-//  LOBBY ACTIONS
-// ─────────────────────────────────────────────
-function createRoom() {
-  const name = validateName(); if (!name) return;
-  myName = name; isHost = true;
-  const code = mkCode();
-  setRoomCode(code);
-  toast('রুম তৈরি হচ্ছে…', 'info');
-
-  peer = new Peer(peerIdFromCode(code), {
-    config: { iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-    ]}
-  });
-
-  peer.on('open', () => {
-    toast('রুম তৈরি হয়েছে 🎉', 'ok');
-    enterRoom();
-    openModal('codeModal');
-  });
-  peer.on('connection', handleDataIn);
-  peer.on('call',       handleCallIn);
-  peer.on('error',      onPeerError);
-}
-
-function joinRoom() {
-  const name = validateName(); if (!name) return;
-  const c = document.getElementById('codeInput').value.trim().toUpperCase();
-  if (c.length !== 6) { toast('৬ অক্ষরের কোড দাও!', 'bad'); return; }
-  myName = name; isHost = false;
-  setRoomCode(c);
-  toast('কানেক্ট হচ্ছে…', 'info');
-
-  peer = new Peer(undefined, {
-    config: { iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-    ]}
-  });
-  peer.on('open',       () => { enterRoom(); connectTo(peerIdFromCode(c)); });
-  peer.on('connection', handleDataIn);
-  peer.on('call',       handleCallIn);
-  peer.on('error',      onPeerError);
-}
-
-// ─────────────────────────────────────────────
-//  ROOM UI
-// ─────────────────────────────────────────────
-function enterRoom() {
-  document.getElementById('lobby').style.display = 'none';
-  const r = document.getElementById('room'); r.style.display = 'flex';
-  document.getElementById('hdName').textContent  = myName;
-  document.getElementById('n0').textContent      = myName + ' (তুমি)';
+// ── Room UI ──
+function enterRoom(){
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('room').style.display='flex';
+  document.getElementById('hdName').textContent=myName;
+  document.getElementById('n0').textContent=myName+' (তুমি)';
+  if(isMobile){
+    document.getElementById('btnScreen').classList.add('disabled');
+    document.getElementById('ph0Icon').textContent='📷';
+    document.getElementById('ph0Txt').textContent='ক্যামেরা চালু হচ্ছে…';
+    setTimeout(()=>toggleCam(),600);
+  } else {
+    document.getElementById('ph0Icon').textContent='🖥️';
+    document.getElementById('ph0Txt').textContent='স্ক্রিন শেয়ার শুরু করো';
+  }
   refreshAvatars();
 }
 
-// ─────────────────────────────────────────────
-//  DATA CONNECTION
-// ─────────────────────────────────────────────
-function connectTo(targetId) {
-  const dc = peer.connect(targetId, { metadata: { name: myName } });
-  dc.on('open', () => { dc.send({ type:'hello', name: myName }); });
-  dc.on('data', d => onData(d, dc));
-  dc.on('close', () => onDisconnect(dc.peer));
-  dc.on('error', e => console.error('dc err', e));
+// ── Data Connections ──
+function connectTo(targetId){
+  const dc=peer.connect(targetId,{metadata:{name:myName}});
+  dc.on('open',()=>dc.send({type:'hello',name:myName}));
+  dc.on('data',d=>onData(d,dc));dc.on('close',()=>onDisconnect(dc.peer));
 }
-
-function handleDataIn(dc) {
-  dc.on('open', () => {
-    const sl = assignSlot(dc.peer);
-    const nm = dc.metadata?.name || '?';
-    regPeer(dc.peer, nm, sl, dc);
-    toast(`${nm} কানেক্ট হয়েছে 👋`, 'ok');
-
-    if (isHost) {
-      // Send existing peers to new joiner
-      const list = Object.entries(peers)
-        .filter(([id]) => id !== dc.peer)
-        .map(([id, p]) => ({ id, name: p.name }));
-      dc.send({ type:'room-info', peers: list, code: roomCode });
-
-      // Notify existing peers
-      Object.values(peers).forEach(p => {
-        if (p.dataConn && p.dataConn.peer !== dc.peer)
-          p.dataConn.send({ type:'peer-joined', id: dc.peer, name: nm });
-      });
-
-      // Call new peer if already sharing
-      if (myStream) callPeer(dc.peer);
+function handleDataIn(dc){
+  dc.on('open',()=>{
+    const sl=assignSlot(dc.peer),nm=dc.metadata?.name||'?';
+    regPeer(dc.peer,nm,sl,dc);toast(`${nm} কানেক্ট হয়েছে 👋`,'ok');
+    if(isHost){
+      const list=Object.entries(peers).filter(([id])=>id!==dc.peer).map(([id,p])=>({id,name:p.name}));
+      dc.send({type:'room-info',peers:list});
+      Object.values(peers).forEach(p=>{if(p.dataConn&&p.dataConn.peer!==dc.peer)p.dataConn.send({type:'peer-joined',id:dc.peer,name:nm});});
+      if(myStream)callPeer(dc.peer);
     }
   });
-  dc.on('data', d => onData(d, dc));
-  dc.on('close', () => onDisconnect(dc.peer));
+  dc.on('data',d=>onData(d,dc));dc.on('close',()=>onDisconnect(dc.peer));
+}
+function onData(d,dc){
+  if(d.type==='hello'){const sl=assignSlot(dc.peer);regPeer(dc.peer,d.name,sl,dc);toast(`${d.name} যোগ দিয়েছে 🎉`,'ok');if(myStream)callPeer(dc.peer);}
+  else if(d.type==='room-info'){d.peers.forEach(p=>{if(!peers[p.id])connectTo(p.id);});}
+  else if(d.type==='peer-joined'){toast(`${d.name} রুমে এসেছে`,'info');}
 }
 
-function onData(d, dc) {
-  if (d.type === 'hello') {
-    const sl = assignSlot(dc.peer);
-    regPeer(dc.peer, d.name, sl, dc);
-    toast(`${d.name} যোগ দিয়েছে 🎉`, 'ok');
-  }
-  else if (d.type === 'room-info') {
-    d.peers.forEach(p => {
-      if (!peers[p.id]) connectTo(p.id);
-    });
-  }
-  else if (d.type === 'peer-joined') {
-    toast(`${d.name} রুমে এসেছে`, 'info');
-  }
+// ── Media ──
+function callPeer(pid){
+  if(!myStream)return;
+  const mc=peer.call(pid,myStream);
+  if(peers[pid])peers[pid].mediaConn=mc;
+  mc.on('stream',s=>{if(peers[pid])showRemote(s,peers[pid].slot,peers[pid].name);});
 }
-
-// ─────────────────────────────────────────────
-//  MEDIA CONNECTION
-// ─────────────────────────────────────────────
-function callPeer(pid) {
-  if (!myStream) return;
-  const mc = peer.call(pid, myStream);
-  if (peers[pid]) peers[pid].mediaConn = mc;
-  mc.on('stream', s => { if (peers[pid]) showRemote(s, peers[pid].slot, peers[pid].name); });
-}
-
-function callAll() {
-  Object.keys(peers).forEach(callPeer);
-}
-
-function handleCallIn(mc) {
-  mc.answer(myStream || new MediaStream());
-  mc.on('stream', s => {
-    const pid = mc.peer;
-    if (!peers[pid]) regPeer(pid, '?', assignSlot(pid), null);
-    peers[pid].mediaConn = mc;
-    showRemote(s, peers[pid].slot, peers[pid].name);
+function callAll(){Object.keys(peers).forEach(callPeer);}
+function handleCallIn(mc){
+  mc.answer(myStream||new MediaStream());
+  mc.on('stream',s=>{
+    const pid=mc.peer;
+    if(!peers[pid])regPeer(pid,'?',assignSlot(pid),null);
+    peers[pid].mediaConn=mc;showRemote(s,peers[pid].slot,peers[pid].name);
   });
 }
 
-// ─────────────────────────────────────────────
-//  STREAM MANAGEMENT
-// ─────────────────────────────────────────────
-let sharing = false, camOn = false;
-
-async function toggleScreen() {
-  if (sharing) { stopStream(); return; }
-  try {
-    const s = await navigator.mediaDevices.getDisplayMedia({ video:{ frameRate:30 }, audio:true });
-    setStream(s, 'screen');
-    s.getVideoTracks()[0].onended = () => stopStream();
-  } catch(e) {
-    if (e.name !== 'NotAllowedError') toast('স্ক্রিন শেয়ার হয়নি। ক্যামেরা ব্যবহার করো।', 'bad');
-    else toast('স্ক্রিন শেয়ার বাতিল হয়েছে', 'info');
+// ── Stream ──
+async function toggleScreen(){
+  if(isMobile){toast('মোবাইলে স্ক্রিন শেয়ার সম্ভব নয় — ক্যামেরা ব্যবহার করো 📷','bad');return;}
+  if(sharing){stopStream();return;}
+  try{
+    const s=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:30},audio:true});
+    setStream(s,'screen');s.getVideoTracks()[0].onended=()=>stopStream();
+  }catch(e){toast(e.name==='NotAllowedError'?'স্ক্রিন শেয়ার বাতিল':'স্ক্রিন শেয়ার হয়নি','bad');}
+}
+async function toggleCam(){
+  if(camOn){stopStream();return;}
+  const constraints={
+    video: isMobile?{facingMode:camFacing,width:{ideal:1280},height:{ideal:720}}:true,
+    audio:true
+  };
+  try{
+    const s=await navigator.mediaDevices.getUserMedia(constraints);
+    setStream(s,'cam');
+    if(isMobile)document.getElementById('flipBtn').style.display='block';
+  }catch(e){
+    if(e.name==='NotAllowedError')toast('ক্যামেরা পারমিশন দাও — ব্রাউজার সেটিং চেক করো','bad');
+    else toast('ক্যামেরা চালু হয়নি: '+e.message,'bad');
   }
 }
-
-async function toggleCam() {
-  if (camOn) { stopStream(); return; }
-  try {
-    const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    setStream(s, 'cam');
-  } catch(e) {
-    toast('ক্যামেরা চালু করা যায়নি', 'bad');
-  }
+async function flipCamera(){
+  if(!camOn)return;
+  camFacing=camFacing==='user'?'environment':'user';
+  stopStream();setTimeout(()=>toggleCam(),300);
 }
-
-function toggleMic() {
-  if (!myStream) { toast('আগে শেয়ার শুরু করো', 'info'); return; }
-  micOn = !micOn;
-  myStream.getAudioTracks().forEach(t => t.enabled = micOn);
-  document.getElementById('micIcon').textContent = micOn ? '🎙️' : '🔇';
-  document.getElementById('btnMic').classList.toggle('active', !micOn);
-  toast(micOn ? 'মাইক চালু' : 'মাইক বন্ধ', 'info');
+function toggleMic(){
+  if(!myStream){toast('আগে ক্যামেরা চালু করো','info');return;}
+  micOn=!micOn;
+  myStream.getAudioTracks().forEach(t=>t.enabled=micOn);
+  document.getElementById('micIcon').textContent=micOn?'🎙️':'🔇';
+  document.getElementById('btnMic').classList.toggle('active',!micOn);
+  toast(micOn?'মাইক চালু':'মাইক বন্ধ','info');
 }
-
-function setStream(s, type) {
-  if (myStream) myStream.getTracks().forEach(t => t.stop());
-  myStream = s;
-
-  const v = document.getElementById('v0');
-  v.srcObject = s; v.style.display = 'block';
-  document.getElementById('ph0').style.display = 'none';
+function setStream(s,type){
+  if(myStream)myStream.getTracks().forEach(t=>t.stop());
+  myStream=s;
+  const v=document.getElementById('v0');v.srcObject=s;v.style.display='block';
+  document.getElementById('ph0').style.display='none';
   document.getElementById('t0').classList.add('t-sharing');
   document.getElementById('d0').classList.add('live');
-
-  sharing = type==='screen'; camOn = type==='cam';
-
-  document.getElementById('btnScreen').classList.toggle('active', sharing);
-  document.getElementById('btnCam').classList.toggle('active', camOn);
-  document.getElementById('lScreen').textContent = sharing ? 'বন্ধ' : 'শেয়ার';
-  document.getElementById('lCam').textContent    = camOn   ? 'বন্ধ' : 'ক্যামেরা';
-
+  sharing=type==='screen';camOn=type==='cam';
+  document.getElementById('btnScreen').classList.toggle('active',sharing);
+  document.getElementById('btnCam').classList.toggle('active',camOn);
+  document.getElementById('lScreen').textContent=sharing?'বন্ধ':'স্ক্রিন';
+  document.getElementById('lCam').textContent=camOn?'বন্ধ':'ক্যামেরা';
   callAll();
-  toast(type==='screen' ? 'স্ক্রিন শেয়ার শুরু ✅' : 'ক্যামেরা চালু ✅', 'ok');
+  toast(type==='screen'?'স্ক্রিন শেয়ার শুরু ✅':'ক্যামেরা চালু ✅','ok');
 }
-
-function stopStream() {
-  if (myStream) { myStream.getTracks().forEach(t => t.stop()); myStream = null; }
-  const v = document.getElementById('v0');
-  v.srcObject = null; v.style.display = 'none';
-  document.getElementById('ph0').style.display = 'flex';
+function stopStream(){
+  if(myStream){myStream.getTracks().forEach(t=>t.stop());myStream=null;}
+  const v=document.getElementById('v0');v.srcObject=null;v.style.display='none';
+  document.getElementById('ph0').style.display='flex';
   document.getElementById('t0').classList.remove('t-sharing');
   document.getElementById('d0').classList.remove('live');
-  sharing = false; camOn = false;
+  document.getElementById('flipBtn').style.display='none';
+  sharing=false;camOn=false;
   document.getElementById('btnScreen').classList.remove('active');
   document.getElementById('btnCam').classList.remove('active');
-  document.getElementById('lScreen').textContent = 'শেয়ার';
-  document.getElementById('lCam').textContent    = 'ক্যামেরা';
-  toast('শেয়ার বন্ধ হয়েছে', 'info');
+  document.getElementById('lScreen').textContent='স্ক্রিন';
+  document.getElementById('lCam').textContent='ক্যামেরা';
+  document.getElementById('ph0Icon').textContent=isMobile?'📷':'🖥️';
+  document.getElementById('ph0Txt').textContent=isMobile?'ক্যামেরা চালু করো':'স্ক্রিন শেয়ার করো';
+  toast('বন্ধ হয়েছে','info');
 }
 
-// ─────────────────────────────────────────────
-//  PEER REGISTRY
-// ─────────────────────────────────────────────
-function assignSlot(pid) {
-  if (peers[pid]?.slot !== undefined) return peers[pid].slot;
-  if (slots[0] === null) { slots[0] = pid; return 0; }
-  if (slots[1] === null) { slots[1] = pid; return 1; }
+// ── Peer Registry ──
+function assignSlot(pid){
+  if(peers[pid]?.slot!==undefined)return peers[pid].slot;
+  if(slots[0]===null){slots[0]=pid;return 0;}
+  if(slots[1]===null){slots[1]=pid;return 1;}
   return -1;
 }
-
-function regPeer(pid, name, slot, dc) {
-  if (!peers[pid]) peers[pid] = { name, slot, dataConn: dc, mediaConn: null };
-  else { peers[pid].name = name; if(dc) peers[pid].dataConn = dc; }
-  if (slot >= 0) updateSlot(slot, name, true);
+function regPeer(pid,name,slot,dc){
+  if(!peers[pid])peers[pid]={name,slot,dataConn:dc,mediaConn:null};
+  else{peers[pid].name=name;if(dc)peers[pid].dataConn=dc;}
+  if(slot>=0)updateSlot(slot,name,true);
   refreshAvatars();
 }
-
-function onDisconnect(pid) {
-  const p = peers[pid]; if (!p) return;
-  toast(`${p.name} রুম ছেড়ে গেছে`, 'info');
-  if (p.slot >= 0) { slots[p.slot] = null; updateSlot(p.slot, null, false); }
-  delete peers[pid];
-  refreshAvatars();
+function onDisconnect(pid){
+  const p=peers[pid];if(!p)return;
+  toast(`${p.name} রুম ছেড়ে গেছে`,'info');
+  if(p.slot>=0){slots[p.slot]=null;updateSlot(p.slot,null,false);}
+  delete peers[pid];refreshAvatars();
 }
-
-// ─────────────────────────────────────────────
-//  SLOT UI (1-indexed in DOM)
-// ─────────────────────────────────────────────
-function showRemote(stream, slot, name) {
-  const i = slot + 1;
-  const v  = document.getElementById(`v${i}`);
-  const ph = document.getElementById(`ph${i}`);
-  const lb = document.getElementById(`lb${i}`);
-  const d  = document.getElementById(`d${i}`);
-  const t  = document.getElementById(`t${i}`);
-
-  v.srcObject = stream; v.style.display = 'block';
-  ph.style.display = 'none';
-  lb.style.display = 'flex';
-  d.classList.add('live');
-  t.classList.add('t-sharing');
-  t.classList.remove('t-connected');
-  document.getElementById(`n${i}`).textContent = name;
-  toast(`${name} শেয়ার শুরু করেছে 🖥️`, 'ok');
+function showRemote(stream,slot,name){
+  if(slot<0)return;
+  const i=slot+1;
+  document.getElementById(`v${i}`).srcObject=stream;
+  document.getElementById(`v${i}`).style.display='block';
+  document.getElementById(`ph${i}`).style.display='none';
+  document.getElementById(`lb${i}`).style.display='flex';
+  document.getElementById(`d${i}`).classList.add('live');
+  document.getElementById(`t${i}`).classList.add('t-sharing');
+  document.getElementById(`n${i}`).textContent=name;
+  toast(`${name} লাইভ শুরু করেছে 🔴`,'ok');
 }
-
-function updateSlot(slot, name, connected) {
-  const i = slot + 1;
-  const ph = document.getElementById(`ph${i}`);
-  const lb = document.getElementById(`lb${i}`);
-  const v  = document.getElementById(`v${i}`);
-  const d  = document.getElementById(`d${i}`);
-  const t  = document.getElementById(`t${i}`);
-
-  if (connected) {
-    document.getElementById(`n${i}`).textContent = name;
-    lb.style.display = 'flex';
-    d.classList.remove('live'); d.classList.add('con');
-    t.classList.add('t-connected');
-    ph.innerHTML = `<div class="ph-icon">✅</div><p>${name} কানেক্টেড</p>`;
+function updateSlot(slot,name,connected){
+  const i=slot+1;
+  const ph=document.getElementById(`ph${i}`),lb=document.getElementById(`lb${i}`);
+  const v=document.getElementById(`v${i}`),d=document.getElementById(`d${i}`),t=document.getElementById(`t${i}`);
+  if(connected){
+    document.getElementById(`n${i}`).textContent=name;
+    lb.style.display='flex';d.classList.add('con');t.classList.add('t-connected');
+    ph.innerHTML=`<div class="ph-icon">✅</div><p>${name}<br>কানেক্টেড</p>`;
   } else {
-    document.getElementById(`n${i}`).textContent = `বন্ধু ${i}`;
-    lb.style.display = 'none';
-    d.classList.remove('live','con');
+    document.getElementById(`n${i}`).textContent=`বন্ধু ${i}`;
+    lb.style.display='none';d.classList.remove('live','con');
     t.classList.remove('t-sharing','t-connected');
-    v.srcObject = null; v.style.display = 'none';
-    ph.style.display = 'flex';
-    ph.innerHTML = `<div class="ph-icon">⏳</div><p>বন্ধুর জন্য অপেক্ষা…</p>`;
+    v.srcObject=null;v.style.display='none';ph.style.display='flex';
+    ph.innerHTML=`<div class="ph-icon">⏳</div><p>বন্ধুর জন্য<br>অপেক্ষা…</p>`;
   }
 }
-
-function refreshAvatars() {
-  const all  = [myName, ...Object.values(peers).map(p=>p.name)];
-  const cont = document.getElementById('avList');
-  cont.innerHTML = all.slice(0,3).map(n =>
-    `<div class="av on" title="${n}">${(n||'?')[0].toUpperCase()}</div>`
-  ).join('');
+function refreshAvatars(){
+  const all=[myName,...Object.values(peers).map(p=>p.name)];
+  document.getElementById('avList').innerHTML=all.slice(0,3).map(n=>
+    `<div class="av on" title="${n}">${(n||'?')[0].toUpperCase()}</div>`).join('');
 }
-
-// ─────────────────────────────────────────────
-//  MISC
-// ─────────────────────────────────────────────
-function copyCode() {
+function copyCode(){
   navigator.clipboard.writeText(roomCode)
-    .then(()  => toast('কোড কপি হয়েছে 📋', 'ok'))
-    .catch(()  => toast('কোড: ' + roomCode, 'info'));
+    .then(()=>toast('কোড কপি হয়েছে 📋','ok'))
+    .catch(()=>toast('কোড: '+roomCode,'info'));
 }
-
-function leave() {
-  stopStream();
-  if (peer) peer.destroy();
-  location.reload();
+function leave(){stopStream();if(peer)peer.destroy();location.reload();}
+function onPeerError(err){
+  const msgs={'unavailable-id':'এই রুম কোড ব্যস্ত। নতুন রুম তৈরি করো।',
+    'peer-unavailable':'রুম কোড ভুল বা মেয়াদ শেষ।','network':'নেটওয়ার্ক সমস্যা।','disconnected':'সংযোগ বিচ্ছিন্ন।'};
+  toast(msgs[err.type]||'সংযোগ সমস্যা: '+err.type,'bad');
+  console.error('PeerJS:',err.type,err);
 }
-
-function onPeerError(err) {
-  console.error('PeerJS:', err.type, err);
-  const msgs = {
-    'unavailable-id':  'এই রুম কোড ব্যস্ত। আবার চেষ্টা করো।',
-    'peer-unavailable':'রুম কোড সঠিক নয় বা মেয়াদ শেষ।',
-    'network':         'নেটওয়ার্ক সমস্যা হয়েছে।',
-    'disconnected':    'সংযোগ বিচ্ছিন্ন হয়েছে।',
-  };
-  toast(msgs[err.type] || `সংযোগ সমস্যা: ${err.type}`, 'bad');
-}
-
-// Enter key support
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  const code = document.getElementById('codeInput')?.value.trim();
-  const name = document.getElementById('nameInput')?.value.trim();
-  if (!name) return;
-  if (code && code.length === 6) joinRoom();
-  else createRoom();
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const code=document.getElementById('codeInput')?.value.trim();
+  const name=document.getElementById('nameInput')?.value.trim();
+  if(!name)return;
+  if(code&&code.length===6)joinRoom();else createRoom();
 });
 </script>
 </body>
