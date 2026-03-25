@@ -328,23 +328,9 @@ function enterRoom(){
   document.getElementById('room').style.display='flex';
   document.getElementById('hdName').textContent=myName;
   document.getElementById('n0').textContent=myName+' (তুমি)';
-  if(isIOS){
-    // iOS — শুধু ক্যামেরা
-    document.getElementById('btnScreen').classList.add('disabled');
-    document.getElementById('ph0Icon').textContent='📷';
-    document.getElementById('ph0Txt').textContent='ক্যামেরা চালু হচ্ছে…';
-    setTimeout(()=>toggleCam(),600);
-  } else if(canScreenShare){
-    // Desktop ও Android Chrome — স্ক্রিন শেয়ার সাপোর্ট আছে
-    document.getElementById('ph0Icon').textContent='🖥️';
-    document.getElementById('ph0Txt').textContent='স্ক্রিন শেয়ার করো অথবা ক্যামেরা চালু করো';
-  } else {
-    // অন্য মোবাইল ব্রাউজার — শুধু ক্যামেরা
-    document.getElementById('btnScreen').classList.add('disabled');
-    document.getElementById('ph0Icon').textContent='📷';
-    document.getElementById('ph0Txt').textContent='ক্যামেরা চালু হচ্ছে…';
-    setTimeout(()=>toggleCam(),600);
-  }
+  // স্ক্রিন শেয়ার বাটন সবসময় চালু — iOS তেও try করতে দাও, error দেখাবে
+  document.getElementById('ph0Icon').textContent='🖥️';
+  document.getElementById('ph0Txt').textContent='স্ক্রিন শেয়ার বা ক্যামেরা চালু করো';
   refreshAvatars();
 }
 
@@ -392,8 +378,11 @@ function handleCallIn(mc){
 
 // ── Stream ──
 async function toggleScreen(){
-  if(!canScreenShare){toast('এই ব্রাউজারে স্ক্রিন শেয়ার সাপোর্ট নেই — Chrome আপডেট করো 📷','bad');return;}
   if(sharing){stopStream();return;}
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+    toast('এই ব্রাউজার স্ক্রিন শেয়ার সাপোর্ট করে না। Chrome আপডেট করো।','bad');
+    return;
+  }
   try{
     const s=await navigator.mediaDevices.getDisplayMedia({
       video:{frameRate:30,width:{ideal:1920},height:{ideal:1080}},
@@ -402,8 +391,13 @@ async function toggleScreen(){
     setStream(s,'screen');
     s.getVideoTracks()[0].onended=()=>stopStream();
   }catch(e){
-    if(e.name==='NotAllowedError')toast('স্ক্রিন শেয়ার পারমিশন দাও — পপআপে Allow চাপো','bad');
-    else toast('স্ক্রিন শেয়ার হয়নি: '+e.message,'bad');
+    if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError'){
+      toast('স্ক্রিন শেয়ার Allow করো — পপআপে "Allow" বা "Share" চাপো ✅','bad');
+    } else if(e.name==='NotSupportedError'){
+      toast('এই ব্রাউজার/OS স্ক্রিন শেয়ার সাপোর্ট করে না','bad');
+    } else {
+      toast('স্ক্রিন শেয়ার হয়নি: '+e.message,'bad');
+    }
   }
 }
 async function toggleCam(){
